@@ -25,6 +25,7 @@ The goal of this project was to translate real-world casino rules into structure
 - Session statistics tracking
 - Money formatting to two decimal places
 - Win rate displayed as percentage
+- Proper OOP refactor using a Hand class
 
 ---
 
@@ -113,9 +114,24 @@ All numeric input is validated using scanner checks to prevent runtime crashes f
 
 ## Project Structure
 
-Main.java
+### `Main.java`
+- Contains the main game loop
+- Handles menu interaction
+- Controls hand flow (deal → player turn → dealer turn → payout)
+- Manages bankroll and statistics
+- Builds and shuffles deck (Fisher–Yates algorithm)
 
-The current version is implemented in a single file for clarity during early development. The structure is intentionally straightforward to emphasize core game logic. Future versions may refactor into additional classes such as Card, Hand, or Deck for improved object-oriented structure.
+### `Hand.java`
+- Encapsulates all hand-related logic
+- Stores cards in an `ArrayList<Integer>`
+- Computes totals using proper soft-ace rules
+- Provides:
+  - `addCard(int)`
+  - `getTotal()`
+  - `isBust()`
+  - `isBlackjack()`
+
+This refactor removed duplicated total and ace-handling logic from `Main` and centralized it inside the `Hand` class, improving readability and maintainability.
 
 ---
 
@@ -126,7 +142,6 @@ The current version is implemented in a single file for clarity during early dev
 - Implement Split functionality
 - Multi-deck shoe support
 - Basic strategy suggestion system
-- Refactor into Card and Hand classes
 - ASCII card display
 - Simulation mode for automated hand runs
 - Improved session summary analytics
