@@ -26,7 +26,7 @@ public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        //Random used only for shuffling
+        // Random is used for Fisher–Yates shuffling only (dealing is sequential).
         Random random = new Random();
 
         // Initializes game state
@@ -94,10 +94,8 @@ public class Main {
      */
     public static void playGame(Scanner scanner, GameState state, Random random){
 
-        // Player decision and outcome state flags
+        // Hand outcome flags used during resolution
         boolean playerStanding = false; // player ended decisions voluntarily
-        boolean playerBusted = false;   // player exceeded 21
-        boolean dealerBusted = false;   // dealer exceeded 21
         boolean playerLoses = false;    // final outcome control flag
         boolean push = false;           // tie hand
 
@@ -124,74 +122,43 @@ public class Main {
              * Initial deal in correct casino order:
              * Player -> Dealer -> Player -> Dealer
              */
+
+            Hand playerHand = new Hand();
+            Hand dealerHand = new Hand();
+
             int playerCard1 = drawCard(state);
+            playerHand.addCard(playerCard1);
             int dealerCard1 = drawCard(state);
-            int playerCard2 = drawCard(state);          
+            dealerHand.addCard(dealerCard1);
+
+            int playerCard2 = drawCard(state); 
+            playerHand.addCard(playerCard2);         
             int dealerCard2 = drawCard(state);
-
-            // Compute initial totals using numeric values
-            int playerTotal = playerCard1 + playerCard2;
-            int dealerTotal = dealerCard1 + dealerCard2; 
-
-            // Tracks whether the player has a natural blackjack
-            boolean playerBlackjack = false;
+            dealerHand.addCard(dealerCard2);
 
             // Handles double down rule of only being allowed on the player's first decision
             boolean isFirstDecision = true;
 
-            // Handles soft aces, giving an ace the value of 11 or 1
-            int playerSoftAces = 0;
-            int dealerSoftAces = 0;
-
-            // Count players initial aces
-            if (playerCard1 == 11){
-                playerSoftAces ++;
-            }
-            if (playerCard2 == 11){
-                playerSoftAces ++;
-            }
-
-            // Adjust player total if soft aces are used
-            while (playerTotal > 21 && playerSoftAces > 0){
-                playerTotal -= 10;
-                playerSoftAces --;
-            }
-
-            // Count dealers initial aces
-            if (dealerCard1 == 11){
-                dealerSoftAces ++;
-            }
-            if (dealerCard2 == 11){
-                dealerSoftAces ++;
-            }
-
-            // Adjust dealer total if soft aces are used
-            while (dealerTotal > 21 && dealerSoftAces > 0){
-                dealerTotal -= 10;
-                dealerSoftAces --;
-            }
-
             // Shows player's starting hand
-            System.out.println("Your cards: " + playerCard1 +", " +  playerCard2 + " (Total: " + playerTotal + ")");
+            System.out.println("Your cards: " + playerCard1 +", " +  playerCard2 + " (Total: " + playerHand.getTotal() + ")");
 
             /**
              * Natural blackjack handling:
              * - If player and dealer both have blackjack: push
-             * - If only player has blackjack: set playerBlackjack true (payout later)
+             * - If only player has blackjack: skip player decisions and resolve payout later
              */
-            if (playerTotal == 21 && dealerTotal == 21){
+            if (playerHand.isBlackjack() && dealerHand.isBlackjack()){
                 System.out.println("You might have a BlackJack! Lets check the dealers cards.");
                 System.out.println("Dealer shows: " + dealerCard1);
                 System.out.println("Dealer flips their second card and shows: " + dealerCard2);
-                System.out.println("Dealer's total: " + dealerTotal);
+                System.out.println("Dealer's total: " + dealerHand.getTotal());
                 push = true;
                 System.out.println("Unlucky. The dealer also has a BlackJack. This hand is a push!");
-            } else if (playerTotal == 21){
+            } else if (playerHand.isBlackjack()){
                 System.out.println("You might have a BlackJack! Lets check the dealers cards.");
                 System.out.println("Dealer shows: " + dealerCard1);
                 System.out.println("Dealer flips their second card and shows: " + dealerCard2);
-                System.out.println("Dealer's total: " + dealerTotal);
-                playerBlackjack = true;
+                System.out.println("Dealer's total: " + dealerHand.getTotal());
             } else {
 
                 // Normal case: player does not have a blackjack
@@ -204,7 +171,7 @@ public class Main {
                  */
                 if (dealerCard1 == 10 || dealerCard1 == 11){
                     System.out.println("Dealer checks second card for potential BlackJack.");
-                    if (dealerTotal == 21) {
+                    if (dealerHand.isBlackjack()) {
                         System.out.println("The Dealer flips the second card and shows: " + dealerCard2);
                         System.out.println("Dealer has a BlackJack!");
                         playerLoses = true;
@@ -216,7 +183,7 @@ public class Main {
              * Player decision loop:
              * Continues until player stands, busts, has blackjack, pushes, or loses immediately to dealer blackjack.
              */
-            while (!playerStanding && !playerBusted && !playerBlackjack && !push && !playerLoses){
+            while (!playerStanding && !playerHand.isBust() && !playerHand.isBlackjack() && !push && !playerLoses){
 
                 // Show correct decision prompt based on whether double down is still allowed
                 if (isFirstDecision){
@@ -232,24 +199,9 @@ public class Main {
                 if (hitStand.equalsIgnoreCase("h")){
                     isFirstDecision = false;    // once you hit, double down is no longer allowed
                     int playerHit = drawCard(state);
-                    playerTotal = playerTotal + playerHit;
+                    playerHand.addCard(playerHit);
 
-                    // Track soft ace if the new card is an ace
-                    if (playerHit == 11){
-                        playerSoftAces ++;
-                    }
-
-                    // Apply soft ace adjustment to prevent incorrect busts
-                    while (playerTotal > 21 && playerSoftAces > 0){
-                        playerTotal -= 10;
-                        playerSoftAces --;
-                    }
-                    System.out.println("Your card: " + playerHit + " Your new total: " + playerTotal);
-
-                    // Checks for player bust
-                    if (playerTotal > 21){
-                        playerBusted = true;
-                    }
+                    System.out.println("Your card: " + playerHit + " Your new total: " + playerHand.getTotal());
 
                 // Stand action. Ends players decision
                 } else if (hitStand.equalsIgnoreCase("s")){
@@ -273,24 +225,10 @@ public class Main {
 
                             // Deal exactly one card to player
                             int playerHit = drawCard(state);
-                            playerTotal = playerTotal + playerHit;
+                            playerHand.addCard(playerHit);
 
-                            // Soft ace tracking for double down card
-                            if (playerHit == 11){
-                                playerSoftAces ++;
-                            }
+                            System.out.println("Your card: " + playerHit + " Your new total: " + playerHand.getTotal());
 
-                            // Adjust for soft ace if needed
-                            while (playerTotal > 21 && playerSoftAces > 0){
-                                playerTotal -= 10;
-                                playerSoftAces --;
-                            }
-                            System.out.println("Your card: " + playerHit + " Your new total: " + playerTotal);
-
-                            // Bust checker
-                            if (playerTotal > 21){
-                                playerBusted = true;
-                            }
                         }
                     } else {
                         // Prevent double down after a hit
@@ -308,51 +246,41 @@ public class Main {
             }
 
             // If player busts, end hand immediately and player loses
-            if (playerBusted == true){
+            if (playerHand.isBust()){
                 System.out.println("You have Busted!");
                 playerLoses = true;
 
             // If player has a blackjack and dealer does not, blackjack payout applies
-            } else if (playerBlackjack == true && dealerTotal != 21) {
+            } else if (playerHand.isBlackjack() && !dealerHand.isBlackjack()) {
                 System.out.println("You have a BlackJack! This pays 3 to 2");
 
             // Dealer play phase. Dealer reveals card until reaching 17 or higher. Dealer stands on all 17s
             } else if (!playerLoses){
                 System.out.println("Dealer flips their second card and shows: " + dealerCard2);
-                System.out.println("Dealer's total: " + dealerTotal);
+                System.out.println("Dealer's total: " + dealerHand.getTotal());
 
                 // Dealer hits while under 17
-                while (dealerTotal < 17) {
+                while (dealerHand.getTotal() < 17) {
                     int dealerHit = drawCard(state);
-                    dealerTotal = dealerTotal + dealerHit;
+                    dealerHand.addCard(dealerHit);
 
-                    // Soft aces handling for dealer
-                    if (dealerHit == 11){
-                        dealerSoftAces ++;
-                    }
-                    while (dealerTotal > 21 && dealerSoftAces > 0){
-                        dealerTotal -= 10;
-                        dealerSoftAces --;
-                    }
                     System.out.println("Dealer drew a " + dealerHit);
-                    System.out.println("Dealer's total: " + dealerTotal);
+                    System.out.println("Dealer's total: " + dealerHand.getTotal());
 
                     // Dealer bust check
-                    if (dealerTotal > 21){
+                    if (dealerHand.isBust()){
                         System.out.println("Dealer has Busted!");
-                        playerLoses = false;
-                        dealerBusted = true;
                     }
                 }
 
                 /**
                  * Compare hands (only meaningful if dealer did not bust).
-                 * - If dealer busted, player wins (handled by dealerBusted flag).
+                 * - If dealer busts, player wins (checked via dealerHand.isBust()).
                  * - Otherwise compare totals.
                  */
-                if (playerTotal > dealerTotal || dealerBusted){
+                if (playerHand.getTotal() > dealerHand.getTotal() || dealerHand.isBust()){
                     playerLoses = false;
-                } else if (playerTotal < dealerTotal) {
+                } else if (playerHand.getTotal() < dealerHand.getTotal()) {
                     playerLoses = true;
                 } else {
                     push = true;
@@ -371,7 +299,7 @@ public class Main {
             if (push){
                 System.out.println("This game was a push. Your bet will be returned.");
                 state.handsPlayed ++;
-            } else if (playerBlackjack) {
+            } else if (playerHand.isBlackjack() && !dealerHand.isBlackjack()) {
                 state.balance = state.balance + ((bet * 3) / 2);
                 state.wins ++;
                 state.handsPlayed ++;
